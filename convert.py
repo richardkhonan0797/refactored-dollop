@@ -1,11 +1,11 @@
 import json
 import xmltodict
 
-def reconstruct_criteria(criteria, states, i):
+def reconstruct_criteria(criteria, tests, i):
     print(i, "INI I")
 
     if type(criteria) is dict:
-        state = []
+        test = []
 
         if "criterion" in criteria:
             if type(criteria["criterion"]) == list:
@@ -17,27 +17,27 @@ def reconstruct_criteria(criteria, states, i):
                 ]
 
                 for criterion in criteria["criterion"]:
-                    if criterion["test_ref"] in states:
-                        res[0][criteria["operator"]].append(states[criterion["test_ref"]])
+                    if criterion["test_ref"] in tests:
+                        res[0][criteria["operator"]].append(tests[criterion["test_ref"]])
                 
                 return res
 
             else:
-                if criteria["criterion"]["test_ref"] in states:
-                    for arr in states[criteria["criterion"]["test_ref"]]:
-                        state.append(arr)
+                if criteria["criterion"]["test_ref"] in tests:
+                    for arr in tests[criteria["criterion"]["test_ref"]]:
+                        test.append(arr)
 
-        if state:
+        if test:
             return {
                 criteria["operator"]: [
-                    state,
-                    reconstruct_criteria(criteria["criteria"], states, i)
+                    test,
+                    reconstruct_criteria(criteria["criteria"], tests, i)
                 ]
             }
         else:
             return {
                 criteria["operator"]: [
-                    reconstruct_criteria(criteria["criteria"], states, i)
+                    reconstruct_criteria(criteria["criteria"], tests, i)
                 ]
             }
 
@@ -48,11 +48,11 @@ def reconstruct_criteria(criteria, states, i):
 
         for data in criteria:
 
-            state = []
+            test = []
             if "criteria" in data:
                 res.append({
                     data["operator"]: [
-                        reconstruct_criteria(data["criteria"], states, i)
+                        reconstruct_criteria(data["criteria"], tests, i)
                     ]
                 })
                 continue
@@ -60,11 +60,11 @@ def reconstruct_criteria(criteria, states, i):
             if "criterion" in data:
                 for criterion in data["criterion"]:
                     if i == 214: print(data)
-                    if criterion["test_ref"] in states:
-                        state.append(states["criterion"]["test_ref"])
+                    if criterion["test_ref"] in tests:
+                        test.append(tests[criterion["test_ref"]])
 
             res.append({
-                data["operator"]: state
+                data["operator"]: test
             })
 
         return res
@@ -79,7 +79,13 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
     dict_data = json.loads(json_data)
 
     states = {}
+    objects = {}
+    tests = {}
 
+
+    """
+    States
+    """
     for state in dict_data["oval_definitions"]["states"]["red-def:rpminfo_state"]:
         states[state["id"]] = []
 
@@ -147,6 +153,35 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
                 state["red-def:version"]["#text"]
             ]
             states[state["id"]].append(data)
+    
+    """
+    Objects
+    """
+    for object in dict_data["oval_definitions"]["objects"]["red-def:rpminfo_object"]:
+        objects[object["id"]] = []
+
+        if "red-def:name" in object:
+            objects[object["id"]] = object["red-def:name"]
+            
+    """
+    Tests
+    """
+    for test in dict_data["oval_definitions"]["tests"]["red-def:rpminfo_test"]:
+        tests[test["id"]] = []
+
+        object = ""
+        if "red-def:object" in test:
+            if test["red-def:object"]["object_ref"] in objects:
+                object = objects[test["red-def:object"]["object_ref"]]
+
+        if "red-def:state" in test:
+            if test["red-def:state"]["state_ref"] in states:
+                for state in states[test["red-def:state"]["state_ref"]]:
+                    # if object:
+                    #     print(object)
+                    # #     state.insert(1, object)
+                    tests[test["id"]].append(state)
+
 
     res = {
         "advisory": []
@@ -154,7 +189,7 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
 
     i = 0
     for definition in dict_data["oval_definitions"]["definitions"]["definition"]:
-
+        if i == 4200: break
         cve = []
         cpe = []
 
@@ -177,19 +212,13 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
             "affected_cpe": cpe
         }
 
-        result["criteria"] = reconstruct_criteria(definition["criteria"], states, i)
+        result["criteria"] = reconstruct_criteria(definition["criteria"], tests, i)
         res["advisory"].append(result)
 
         i += 1
 
     json_data = json.dumps(res, indent=4)
-    print(states)
 
-    states_data = json.dumps(states, indent=4)
-    with open("states.json", "w") as json_file:
-        json_file.write(states_data)
+    with open("result.json", "w") as json_file:  
+        json_file.write(json_data)
         json_file.close()
-
-    # with open("result.json", "w") as json_file:  
-    #     json_file.write(json_data)
-    #     json_file.close()
