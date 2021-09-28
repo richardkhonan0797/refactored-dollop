@@ -2,7 +2,6 @@ import json
 import xmltodict
 
 def reconstruct_criteria(criteria, tests, i):
-    print(i, "INI I")
 
     if type(criteria) is dict:
         test = []
@@ -18,7 +17,8 @@ def reconstruct_criteria(criteria, tests, i):
 
                 for criterion in criteria["criterion"]:
                     if criterion["test_ref"] in tests:
-                        res[0][criteria["operator"]].append(tests[criterion["test_ref"]])
+                        for test in tests[criterion["test_ref"]]:
+                            res[0][criteria["operator"]].append(test)
                 
                 return res
 
@@ -28,21 +28,21 @@ def reconstruct_criteria(criteria, tests, i):
                         test.append(arr)
 
         if test:
-            return {
-                criteria["operator"]: [
-                    test,
-                    reconstruct_criteria(criteria["criteria"], tests, i)
-                ]
-            }
+            data = test
+            data += reconstruct_criteria(criteria["criteria"], tests, i)
+            return [
+                {
+                    criteria["operator"]: data
+                }
+            ]
         else:
-            return {
-                criteria["operator"]: [
-                    reconstruct_criteria(criteria["criteria"], tests, i)
-                ]
-            }
+            return [
+                {
+                    criteria["operator"]: reconstruct_criteria(criteria["criteria"], tests, i)
+                }
+            ]
 
     elif type(criteria) is list:
-        print(type(criteria))
 
         res = []
 
@@ -51,25 +51,21 @@ def reconstruct_criteria(criteria, tests, i):
             test = []
             if "criteria" in data:
                 res.append({
-                    data["operator"]: [
-                        reconstruct_criteria(data["criteria"], tests, i)
-                    ]
+                    data["operator"]: reconstruct_criteria(data["criteria"], tests, i)
                 })
                 continue
 
             if "criterion" in data:
                 for criterion in data["criterion"]:
-                    if i == 214: print(data)
                     if criterion["test_ref"] in tests:
-                        test.append(tests[criterion["test_ref"]])
+                        for test_data in tests[criterion["test_ref"]]:
+                            test.append(test_data)
 
             res.append({
                 data["operator"]: test
             })
 
         return res
-
-            
 
 with open("com.redhat.rhsa-all.xml") as xml_file:
     data_dict = xmltodict.parse(xml_file.read(), attr_prefix="")
@@ -177,10 +173,10 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
         if "red-def:state" in test:
             if test["red-def:state"]["state_ref"] in states:
                 for state in states[test["red-def:state"]["state_ref"]]:
-                    # if object:
-                    #     print(object)
-                    # #     state.insert(1, object)
-                    tests[test["id"]].append(state)
+                    temp = state.copy()
+                    if object:
+                        temp.insert(1, object)
+                    tests[test["id"]].append(temp) 
 
 
     res = {
@@ -189,7 +185,6 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
 
     i = 0
     for definition in dict_data["oval_definitions"]["definitions"]["definition"]:
-        if i == 4200: break
         cve = []
         cpe = []
 
