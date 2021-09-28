@@ -30,12 +30,14 @@ def reconstruct_criteria(criteria, tests, i):
         if test:
             data = test
             data += reconstruct_criteria(criteria["criteria"], tests, i)
+
             return [
                 {
                     criteria["operator"]: data
                 }
             ]
         else:
+            
             return [
                 {
                     criteria["operator"]: reconstruct_criteria(criteria["criteria"], tests, i)
@@ -158,7 +160,16 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
 
         if "red-def:name" in object:
             objects[object["id"]] = object["red-def:name"]
-            
+
+    object = dict_data["oval_definitions"]["objects"]["unix-def:uname_object"]
+    objects[object["id"]] = object["version"]
+
+    for object in dict_data["oval_definitions"]["objects"]["ind-def:textfilecontent54_object"]:
+        objects[object["id"]] = []
+
+        if "ind-def:pattern" in object:
+            objects[object["id"]] = object["ind-def:pattern"]["#text"]
+
     """
     Tests
     """
@@ -178,6 +189,45 @@ with open("com.redhat.rhsa-all.xml") as xml_file:
                         temp.insert(1, object)
                     tests[test["id"]].append(temp) 
 
+    for test in dict_data["oval_definitions"]["tests"]["unix-def:uname_test"]:
+        tests[test["id"]] = []
+
+        object = ""
+        if "unix-def:object" in test:
+            if test["unix-def:object"]["object_ref"] in objects:
+                object = objects[test["unix-def:object"]["object_ref"]]
+
+        if "unix-def:state" in test:
+            if test["unix-def:state"]["state_ref"] in states:
+                for state in states[test["unix-def:state"]["state_ref"]]:
+                    temp = state.copy()
+                    if object:
+                        temp.insert(1, object)
+                    tests[test["id"]].append(temp) 
+
+    for test in dict_data["oval_definitions"]["tests"]["ind-def:textfilecontent54_test"]:
+        tests[test["id"]] = []
+
+        object = ""
+        if "ind-def:object" in test:
+            if test["ind-def:object"]["object_ref"] in objects:
+                object = objects[test["ind-def:object"]["object_ref"]]
+
+        if "ind-def:state" in test:
+            if test["ind-def:state"]["state_ref"] in states:
+                for state in states[test["ind-def:state"]["state_ref"]]:
+                    temp = state.copy()
+                    if object:
+                        temp.insert(1, object)
+                    tests[test["id"]].append(temp) 
+
+    for test in dict_data["oval_definitions"]["tests"]["red-def:rpmverifyfile_test"]:
+        tests[test["id"]] = []
+
+        if "red-def:state" in test:
+            if test["red-def:state"]["state_ref"] in states:
+                for state in states[test["red-def:state"]["state_ref"]]:
+                    tests[test["id"]].append(state)
 
     res = {
         "advisory": []
