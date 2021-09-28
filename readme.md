@@ -12,9 +12,9 @@ I am using Python and [xmltodict](https://github.com/martinblech/xmltodict) is t
 
 ## Run file
 
-Default name for the input file is ``"com.redhat.rhsa-all.xml"``.
-Default name for the output file is ``"result.json"``.
-Edit in the script to change the file name.
+Default name for the input file is ``"com.redhat.rhsa-all.xml"``.  
+Default name for the output file is ``"result.json"``.  
+Edit in the script to change the file name.  
 
 To run the script:
 ```console
